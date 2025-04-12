@@ -1,14 +1,6 @@
 ﻿name: Build Fabric mod with Gradle
 on:
   workflow_dispatch:
-    inputs:
-      is_it_yeah:
-      description: "Yeah???"
-      equired: true
-      type: choice
-      options:
-      - Yeah!
-      - Yeah!!!!!!
 jobs:
   build:
     runs-on: ubuntu-latest
