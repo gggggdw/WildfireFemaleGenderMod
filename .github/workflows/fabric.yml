@@ -9,10 +9,9 @@ on:
       options:
       - Yeah!
       - Yeah!!!!!!
-
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
