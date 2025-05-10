@@ -1,6 +1,6 @@
 ﻿name: Build Fabric mod with Gradle
 on:
-  push:
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-22.04
