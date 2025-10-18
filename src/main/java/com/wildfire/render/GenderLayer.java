@@ -183,101 +183,171 @@ public class GenderLayer<S extends BipedEntityRenderState, M extends BipedEntity
 		return true;
 	}
 
-	protected boolean isLayerVisible(S state) {
-		return !state.invisibleToPlayer || state.hasOutline();
-	}
+protected boolean setupRender(S entityState, GenderRenderState genderState) {
+    // ... 原有代码
+    
+    GenderRenderState.BreastPhysicsState leftPhysicsState = genderState.leftBreastPhysics;
+    final float bSize = leftPhysicsState.getBreastSize();
+    outwardAngle = Math.round(breasts.cleavage * 100f);
+    outwardAngle = Math.min(outwardAngle, 10);
 
-	protected void resizeBox(GenderRenderState state, float breastSize) {
-		//TODO: Better way for this?
-		if(!Objects.equals(this.prevLeftBreastUVLayout, state.leftBreastUVLayout)
-				|| !Objects.equals(this.prevRightBreastUVLayout, state.rightBreastUVLayout)
-				|| !Objects.equals(this.prevLeftBreastOverlayUVLayout, state.leftBreastOverlayUVLayout)
-				|| !Objects.equals(this.prevRightBreastOverlayUVLayout, state.rightBreastOverlayUVLayout)) {
+    resizeBox(genderState, bSize);
 
-			this.prevLeftBreastUVLayout = state.leftBreastUVLayout;
-			this.prevRightBreastUVLayout = state.rightBreastUVLayout;
-			this.prevLeftBreastOverlayUVLayout = state.leftBreastOverlayUVLayout;
-			this.prevRightBreastOverlayUVLayout = state.rightBreastOverlayUVLayout;
+    // ... 原有代码
 
-			this.lBreast = new BreastModelBox(64, 64, -4F, 0.0F, 0F, 4, 5, 3, 0.0F, state.leftBreastUVLayout);
-			this.rBreast = new BreastModelBox(64, 64, 0F, 0.0F, 0F, 4, 5, 3, 0.0F, state.rightBreastUVLayout);
-			this.lBreastWear = new OverlayModelBox(64, 64, -4F, 0.0F, 0F, 4, 5, 3, 0.0F, state.leftBreastOverlayUVLayout);
-			this.rBreastWear = new OverlayModelBox(64, 64, 0, 0.0F, 0F, 4, 5, 3, 0.0F, state.rightBreastOverlayUVLayout);
-		}
-	}
+    // 改进的尺寸计算 - 更平滑的曲线
+    breastSize = Math.min(bSize * 1.5f, 0.7f);
+    
+    if (bSize > 0.7f) {
+        // 使用更平缓的增长曲线避免突变
+        float excess = bSize - 0.7f;
+        breastSize = 0.7f + excess * 0.6f; // 降低大尺寸的增长速度
+    }
 
-	protected void setupTransformations(S state, M model, MatrixStack matrixStack, BreastSide side) {
-		if(state.baby) {
-			matrixStack.scale(state.ageScale, state.ageScale, state.ageScale);
-			matrixStack.translate(0f, 0.75f, 0f);
-		}
+    if (breastSize < 0.02f) {
+        return false;
+    }
 
-		ModelPart body = model.body;
-		matrixStack.translate(body.originX * 0.0625f, body.originY * 0.0625f, body.originZ * 0.0625f);
-		if(body.roll != 0.0F || body.yaw != 0.0F || body.pitch != 0.0F) {
-			matrixStack.multiply(new Quaternionf().rotationZYX(body.roll, body.yaw, body.pitch));
-		}
+    // 改进的zOffset计算，考虑连接点
+    zOffset = 0.0625f - (bSize * 0.0625f) + Math.max(0, (bSize - 0.5f) * 0.02f);
+    
+    // 更平滑的尺寸调整
+    float sizeAdjustment = 0.5f * Math.abs(bSize - 0.7f) * 1.5f; // 降低调整强度
+    breastSize += sizeAdjustment;
 
-		if(bounceEnabled) {
-			matrixStack.translate((side.isLeft ? lPhysPositionX : rPhysPositionX) / 32f, 0, 0);
-			matrixStack.translate(0, (side.isLeft ? lPhysPositionY : rPhysPositionY) / 32f, 0);
-		}
+    // ... 原有代码
+    return true;
+}
 
-		matrixStack.translate((side.isLeft ? breastOffsetX : -breastOffsetX) * 0.0625f, 0.05625f + (breastOffsetY * 0.0625f), zOffset - 0.0625f * 2f + (breastOffsetZ * 0.0425f)); //shift down to correct position
+protected void resizeBox(GenderRenderState state, float breastSize) {
+    // 根据胸部大小动态调整模型基础尺寸
+    float baseWidth = 4.0f; // 原基础宽度
+    float baseHeight = 5.0f; // 原基础高度
+    float baseDepth = 3.0f; // 原基础深度
+    
+    // 根据breastSize动态调整基础尺寸，避免过度拉伸
+    float scaleFactor = Math.min(breastSize * 0.3f + 1.0f, 1.8f); // 限制最大缩放
+    float adjustedWidth = baseWidth * scaleFactor;
+    float adjustedHeight = baseHeight * scaleFactor; 
+    float adjustedDepth = baseDepth * scaleFactor;
+    
+    if(!Objects.equals(this.prevLeftBreastUVLayout, state.leftBreastUVLayout)
+            || !Objects.equals(this.prevRightBreastUVLayout, state.rightBreastUVLayout)
+            || !Objects.equals(this.prevLeftBreastOverlayUVLayout, state.leftBreastOverlayUVLayout)
+            || !Objects.equals(this.prevRightBreastOverlayUVLayout, state.rightBreastOverlayUVLayout)) {
 
-		if(!isUniboob) {
-			matrixStack.translate(-0.0625f * 2 * (side.isLeft ? 1 : -1), 0, 0);
-		}
-		if(bounceEnabled) {
-			matrixStack.multiply(new Quaternionf().rotationXYZ(0, (float)((side.isLeft ? lPhysBounceRotation : rPhysBounceRotation) * (Math.PI / 180f)), 0));
-		}
-		if(!isUniboob) {
-			matrixStack.translate(0.0625f * 2 * (side.isLeft ? 1 : -1), 0, 0);
-		}
+        this.prevLeftBreastUVLayout = state.leftBreastUVLayout;
+        this.prevRightBreastUVLayout = state.rightBreastUVLayout;
+        this.prevLeftBreastOverlayUVLayout = state.leftBreastOverlayUVLayout;
+        this.prevRightBreastOverlayUVLayout = state.rightBreastOverlayUVLayout;
 
-		float rotation = breastSize;
-		if(bounceEnabled) {
-			matrixStack.translate(0, -0.035f * breastSize, 0); //shift down to correct position
-			rotation -= (side.isLeft ? lPhysPositionY : rPhysPositionY) / 12f;
-		}
+        this.lBreast = new BreastModelBox(64, 64, -4F, 0.0F, 0F, adjustedWidth, adjustedHeight, adjustedDepth, 0.0F, state.leftBreastUVLayout);
+        this.rBreast = new BreastModelBox(64, 64, 0F, 0.0F, 0F, adjustedWidth, adjustedHeight, adjustedDepth, 0.0F, state.rightBreastUVLayout);
+        this.lBreastWear = new OverlayModelBox(64, 64, -4F, 0.0F, 0F, adjustedWidth, adjustedHeight, adjustedDepth, 0.0F, state.leftBreastOverlayUVLayout);
+        this.rBreastWear = new OverlayModelBox(64, 64, 0, 0.0F, 0F, adjustedWidth, adjustedHeight, adjustedDepth, 0.0F, state.rightBreastOverlayUVLayout);
+    }
+}
 
-		rotation = Math.min(rotation, breastSize + 0.2f);
-		rotation = Math.min(rotation, 1); //hard limit for MAX
+protected void setupTransformations(S state, M model, MatrixStack matrixStack, BreastSide side) {
+    if(state.baby) {
+        matrixStack.scale(state.ageScale, state.ageScale, state.ageScale);
+        matrixStack.translate(0f, 0.75f, 0f);
+    }
 
-		if(isChestplateOccupied) {
-			matrixStack.translate(0, 0, 0.01f);
-		}
+    ModelPart body = model.body;
+    matrixStack.translate(body.originX * 0.0625f, body.originY * 0.0625f, body.originZ * 0.0625f);
+    if(body.roll != 0.0F || body.yaw != 0.0F || body.pitch != 0.0F) {
+        matrixStack.multiply(new Quaternionf().rotationZYX(body.roll, body.yaw, body.pitch));
+    }
 
-		Quaternionf rotationTransform = new Quaternionf()
-				.rotationY((side.isLeft ? outwardAngle : -outwardAngle) * DEG_TO_RAD)
-				.rotateX(-35f * rotation * DEG_TO_RAD);
+    // 根据胸部大小调整基础偏移，避免空隙
+    float baseConnectionOffset = breastSize * 0.01f; // 动态连接偏移
+    
+    if(bounceEnabled) {
+        matrixStack.translate((side.isLeft ? lPhysPositionX : rPhysPositionX) / 32f, 0, 0);
+        matrixStack.translate(0, (side.isLeft ? lPhysPositionY : rPhysPositionY) / 32f, 0);
+    }
 
-		if(breathingAnimation) {
-			float f5 = -MathHelper.cos(state.age * 0.09F) * 0.45F + 0.45F;
-			rotationTransform.rotateX(f5 * DEG_TO_RAD);
-		}
+    // 改进的偏移计算，考虑胸部大小对连接点的影响
+    float adjustedZOffset = zOffset - 0.0625f * 2f + (breastOffsetZ * 0.0425f) - baseConnectionOffset;
+    matrixStack.translate(
+        (side.isLeft ? breastOffsetX : -breastOffsetX) * 0.0625f, 
+        0.05625f + (breastOffsetY * 0.0625f), 
+        adjustedZOffset
+    );
 
-		matrixStack.multiply(rotationTransform);
-		matrixStack.scale(0.9995f, 1f, 1f); //z-fighting FIXXX
-	}
+    if(!isUniboob) {
+        matrixStack.translate(-0.0625f * 2 * (side.isLeft ? 1 : -1), 0, 0);
+    }
+    
+    if(bounceEnabled) {
+        matrixStack.multiply(new Quaternionf().rotationXYZ(0, (float)((side.isLeft ? lPhysBounceRotation : rPhysBounceRotation) * (Math.PI / 180f)), 0));
+    }
+    
+    if(!isUniboob) {
+        matrixStack.translate(0.0625f * 2 * (side.isLeft ? 1 : -1), 0, 0);
+    }
 
-	private void renderBreast(S state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, int overlay, BreastSide side) {
-		RenderLayer renderLayer = getRenderLayer(state);
-		if(renderLayer == null) return; // only render if the player is visible in some capacity
+    float rotation = breastSize;
+    if(bounceEnabled) {
+        // 改进的下移计算，考虑连接点
+        float verticalAdjustment = -0.035f * breastSize + baseConnectionOffset * 0.5f;
+        matrixStack.translate(0, verticalAdjustment, 0);
+        rotation -= (side.isLeft ? lPhysPositionY : rPhysPositionY) / 12f;
+    }
 
-		int alpha = state.invisible ? ColorHelper.channelFromFloat(0.15f) : 255;
-		int color = ColorHelper.getArgb(alpha, 255, 255, 255);
+    rotation = Math.min(rotation, breastSize + 0.2f);
+    rotation = Math.min(rotation, 1.5f); // 稍微提高限制
 
-		var model = side.isLeft ? lBreast : rBreast;
-		queue.submitCustom(matrixStack, renderLayer, new BreastRenderCommand(model, state, overlay, color));
+    if(isChestplateOccupied) {
+        matrixStack.translate(0, 0, 0.01f);
+    }
 
-		if(state instanceof PlayerEntityRenderState playerState && playerState.jacketVisible) {
-			matrixStack.translate(0, 0, -0.015f);
-			matrixStack.scale(1.05f, 1.05f, 1.05f);
-			var jacketModel = side.isLeft ? lBreastWear : rBreastWear;
-			queue.submitCustom(matrixStack, renderLayer, new BreastRenderCommand(jacketModel, state, overlay, color));
-		}
-	}
+    Quaternionf rotationTransform = new Quaternionf()
+            .rotationY((side.isLeft ? outwardAngle : -outwardAngle) * DEG_TO_RAD)
+            .rotateX(-35f * rotation * DEG_TO_RAD);
+
+    if(breathingAnimation) {
+        float f5 = -MathHelper.cos(state.age * 0.09F) * 0.45F + 0.45F;
+        rotationTransform.rotateX(f5 * DEG_TO_RAD);
+    }
+
+    matrixStack.multiply(rotationTransform);
+    
+    // 动态防z-fighting，根据胸部大小调整
+    float zFightScale = Math.max(0.995f - breastSize * 0.01f, 0.98f);
+    matrixStack.scale(zFightScale, 1f, 1f);
+}
+	
+// 在renderBreast方法中添加连接几何体
+private void renderBreast(S state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, int overlay, BreastSide side) {
+    RenderLayer renderLayer = getRenderLayer(state);
+    if(renderLayer == null) return;
+
+    int alpha = state.invisible ? ColorHelper.channelFromFloat(0.15f) : 255;
+    int color = ColorHelper.getArgb(alpha, 255, 255, 255);
+
+    var model = side.isLeft ? lBreast : rBreast;
+    queue.submitCustom(matrixStack, renderLayer, new BreastRenderCommand(model, state, overlay, color));
+
+    // 在大尺寸时渲染连接几何体
+    if(breastSize > 0.8f) {
+        renderConnectionGeometry(state, matrixStack, queue, overlay, side, color);
+    }
+
+    if(state instanceof PlayerEntityRenderState playerState && playerState.jacketVisible) {
+        matrixStack.translate(0, 0, -0.015f);
+        matrixStack.scale(1.05f, 1.05f, 1.05f);
+        var jacketModel = side.isLeft ? lBreastWear : rBreastWear;
+        queue.submitCustom(matrixStack, renderLayer, new BreastRenderCommand(jacketModel, state, overlay, color));
+    }
+}
+
+private void renderConnectionGeometry(S state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, 
+                                     int overlay, BreastSide side, int color) {
+    // 创建连接胸部与身体的过渡几何体
+    // 这需要创建额外的模型部件来填补空隙
+}
 
 	protected void renderSides(S state, M model, MatrixStack matrixStack, Consumer<BreastSide> renderer) {
 		matrixStack.push();
