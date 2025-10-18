@@ -184,40 +184,9 @@ public class GenderLayer<S extends BipedEntityRenderState, M extends BipedEntity
 	}
 
 protected boolean setupRender(S entityState, GenderRenderState genderState) {
-    // ... 原有代码
-    
-    GenderRenderState.BreastPhysicsState leftPhysicsState = genderState.leftBreastPhysics;
-    final float bSize = leftPhysicsState.getBreastSize();
-    outwardAngle = Math.round(breasts.cleavage * 100f);
-    outwardAngle = Math.min(outwardAngle, 10);
-
-    resizeBox(genderState, bSize);
-
-    // ... 原有代码
-
-    // 改进的尺寸计算 - 更平滑的曲线
-    breastSize = Math.min(bSize * 1.5f, 0.7f);
-    
-    if (bSize > 0.7f) {
-        // 使用更平缓的增长曲线避免突变
-        float excess = bSize - 0.7f;
-        breastSize = 0.7f + excess * 0.6f; // 降低大尺寸的增长速度
-    }
-
-    if (breastSize < 0.02f) {
-        return false;
-    }
-
-    // 改进的zOffset计算，考虑连接点
-    zOffset = 0.0625f - (bSize * 0.0625f) + Math.max(0, (bSize - 0.5f) * 0.02f);
-    
-    // 更平滑的尺寸调整
-    float sizeAdjustment = 0.5f * Math.abs(bSize - 0.7f) * 1.5f; // 降低调整强度
-    breastSize += sizeAdjustment;
-
-    // ... 原有代码
-    return true;
-}
+	protected boolean isLayerVisible(S state) {
+		return !state.invisibleToPlayer || state.hasOutline();
+	}
 
 protected void resizeBox(GenderRenderState state, float breastSize) {
     // 根据胸部大小动态调整模型基础尺寸
